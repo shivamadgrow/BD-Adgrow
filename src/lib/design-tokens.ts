@@ -1,0 +1,117 @@
+export const designTokens = {
+  colors: {
+    sidebarBg: '#070b19',
+    sidebarHover: '#111c38',
+    sidebarActive: '#1c2541',
+    sidebarBorder: '#1e293b',
+    workspaceBg: '#f8fafc',
+    cardBg: '#ffffff',
+    textPrimary: '#0f172a',
+    textSecondary: '#475569',
+    textMuted: '#94a3b8',
+    borderLight: '#e2e8f0',
+    borderDark: '#cbd5e1',
+    primaryBlue: '#2563eb',
+    primaryBlueHover: '#1d4ed8',
+    emeraldSuccess: '#10b981',
+    amberWarning: '#f59e0b',
+    roseDanger: '#ef4444',
+    purpleAccent: '#8b5cf6',
+  },
+  priorityBadges: {
+    A: {
+      label: 'Priority A (75-100)',
+      bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      dot: 'bg-emerald-500',
+      description: 'Immediate high-intent opportunity; acute digital presence gaps with verified reachability.',
+    },
+    B: {
+      label: 'Priority B (50-74)',
+      bg: 'bg-amber-50 text-amber-700 border-amber-200',
+      dot: 'bg-amber-500',
+      description: 'Moderate opportunity; established business needing modern redesign, speed, or SEO boost.',
+    },
+    C: {
+      label: 'Priority C (<50)',
+      bg: 'bg-slate-100 text-slate-700 border-slate-200',
+      dot: 'bg-slate-400',
+      description: 'Low immediate urgency; strong existing digital presence or unverified contact data.',
+    },
+  },
+  websiteStatusBadges: {
+    not_listed: {
+      label: 'No Website Listed',
+      bg: 'bg-rose-50 text-rose-700 border-rose-200',
+      dot: 'bg-rose-500',
+      icon: 'AlertCircle',
+    },
+    verified_present: {
+      label: 'Website Active',
+      bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      dot: 'bg-emerald-500',
+      icon: 'CheckCircle2',
+    },
+    not_found: {
+      label: 'Website Not Found',
+      bg: 'bg-amber-50 text-amber-700 border-amber-200',
+      dot: 'bg-amber-500',
+      icon: 'HelpCircle',
+    },
+    unavailable: {
+      label: 'Site Unavailable',
+      bg: 'bg-rose-50 text-rose-700 border-rose-200',
+      dot: 'bg-rose-500',
+      icon: 'XCircle',
+    },
+    unknown: {
+      label: 'Status Unknown',
+      bg: 'bg-slate-100 text-slate-600 border-slate-200',
+      dot: 'bg-slate-400',
+      icon: 'HelpCircle',
+    },
+    verification_failed: {
+      label: 'Verification Failed',
+      bg: 'bg-slate-100 text-slate-600 border-slate-200',
+      dot: 'bg-slate-400',
+      icon: 'AlertTriangle',
+    },
+  },
+  phoneStatusBadges: {
+    available: {
+      label: 'Phone Verified',
+      bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      dot: 'bg-emerald-500',
+    },
+    not_listed: {
+      label: 'No Phone Listed',
+      bg: 'bg-rose-50 text-rose-700 border-rose-200',
+      dot: 'bg-rose-500',
+    },
+    unverified: {
+      label: 'Phone Unverified',
+      bg: 'bg-amber-50 text-amber-700 border-amber-200',
+      dot: 'bg-amber-500',
+    },
+  },
+  pipelineStages: {
+    discovered: { label: 'Discovered', color: 'bg-slate-100 text-slate-700 border-slate-300' },
+    research_pending: { label: 'Research Pending', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+    verified: { label: 'Verified', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+    qualified: { label: 'Qualified', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+    ready_for_outreach: { label: 'Ready for Outreach', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+    contacted: { label: 'Contacted', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+    interested: { label: 'Interested', color: 'bg-teal-50 text-teal-700 border-teal-200' },
+    meeting_scheduled: { label: 'Meeting Scheduled', color: 'bg-blue-100 text-blue-800 border-blue-300' },
+    proposal_sent: { label: 'Proposal Sent', color: 'bg-violet-100 text-violet-800 border-violet-300' },
+    negotiation: { label: 'Negotiation', color: 'bg-orange-100 text-orange-800 border-orange-300' },
+    won: { label: 'Closed Won', color: 'bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold' },
+    lost: { label: 'Closed Lost', color: 'bg-rose-100 text-rose-800 border-rose-300' },
+    not_a_fit: { label: 'Not a Fit', color: 'bg-gray-100 text-gray-600 border-gray-300' },
+    do_not_contact: { label: 'Do Not Contact', color: 'bg-red-50 text-red-700 border-red-200' },
+  },
+  spacingScale: {
+    unit: '4px',
+    layoutGutter: '1.5rem', // 24px
+    cardPadding: '1.25rem', // 20px
+  },
+};
