@@ -335,7 +335,7 @@ export default function HomePage() {
         />
 
         {/* Page Content Container */}
-        <main className="flex-1 p-3.5 sm:p-5 md:p-6 pt-20 md:pt-22 space-y-4 sm:space-y-6 max-w-[1720px] w-full mx-auto min-w-0 overflow-x-hidden">
+        <main className="flex-1 p-3.5 sm:p-5 md:p-6 pt-18 md:pt-20 space-y-4 sm:space-y-6 max-w-[1720px] w-full mx-auto min-w-0 overflow-x-hidden">
           {/* TAB 1: Global Discovery Engine */}
           {currentTab === 'discovery' && (
             <div className="space-y-4 sm:space-y-6 min-w-0">
@@ -343,7 +343,7 @@ export default function HomePage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                 <div className="min-w-0">
                   <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                    Global Business Intelligence &amp; Opportunity Finder
+                    Business Discovery
                   </h1>
                   <p className="text-xs text-slate-500 mt-1">
                     Discover businesses worldwide, detect observable digital presence gaps, and qualify high-intent sales opportunities.
