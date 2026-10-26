@@ -114,8 +114,10 @@ export interface LeadScoreBreakdown {
 
 export interface Business {
   id: string;
-  sourceProvider: 'google_places' | 'openstreetmap' | 'local_verified_registry';
+  sourceProvider: 'google_places' | 'manual_entry' | 'openstreetmap' | 'web_directory';
   sourceId: string;
+  dataOrigin?: string;
+  dataConfidence?: 'high' | 'medium' | 'low';
   name: string;
   category: string;
   categoryId: string;

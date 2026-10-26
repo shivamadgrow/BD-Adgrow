@@ -45,7 +45,7 @@ export const NewBusinessModal: React.FC<NewBusinessModalProps> = ({
 
     const baseBiz: Partial<Business> = {
       id: `custom-biz-${Date.now()}`,
-      sourceProvider: 'local_verified_registry',
+      sourceProvider: 'manual_entry',
       sourceId: `custom-${Date.now()}`,
       name: name.trim(),
       category: categoryObj?.name || 'Local Business',
