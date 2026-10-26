@@ -1,9 +1,16 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Ad Grow BD — Global Business Intelligence & Opportunity Finder',
   description: 'Enterprise AI-powered SaaS platform for digital marketing agencies to discover businesses worldwide, identify verifiable digital presence gaps, qualify sales prospects, and accelerate revenue.',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({

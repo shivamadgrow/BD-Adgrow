@@ -39,8 +39,13 @@ export const CRMKanbanView: React.FC<CRMKanbanViewProps> = ({
   currency,
 }) => {
   return (
-    <div className="overflow-x-auto pb-4">
-      <div className="flex gap-4 min-w-[1400px]">
+    <div className="w-full max-w-full min-w-0">
+      <div className="md:hidden flex items-center justify-between text-[11px] text-slate-500 mb-2 bg-slate-100/80 px-3 py-1.5 rounded-lg border border-slate-200">
+        <span>Kanban Pipeline Board</span>
+        <span className="font-semibold text-blue-600">Swipe stages →</span>
+      </div>
+      <div className="overflow-x-auto pb-4 max-w-full min-w-0">
+        <div className="flex gap-4 min-w-[1400px]">
         {activePipelineColumns.map((col) => {
           const colProspects = prospects.filter((p) => p.stage === col.stage);
           const colTotalValue = colProspects.reduce((sum, p) => sum + (p.estimatedDealValue || 0), 0);
@@ -152,6 +157,7 @@ export const CRMKanbanView: React.FC<CRMKanbanViewProps> = ({
           );
         })}
       </div>
+    </div>
     </div>
   );
 };

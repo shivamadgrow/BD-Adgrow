@@ -22,9 +22,9 @@ export const BusinessMapView: React.FC<BusinessMapViewProps> = ({
   const [selectedBiz, setSelectedBiz] = useState<Business | null>(businesses[0] || null);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden flex flex-col lg:flex-row h-[560px]">
+    <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden flex flex-col lg:flex-row min-h-[560px] lg:h-[560px]">
       {/* Map Graphic Canvas / Spatial Simulation */}
-      <div className="relative flex-1 bg-slate-900 overflow-hidden flex items-center justify-center p-6">
+      <div className="relative flex-1 min-h-[300px] sm:min-h-[360px] bg-slate-900 overflow-hidden flex items-center justify-center p-4 sm:p-6">
         {/* Abstract World Grid Background */}
         <div
           className="absolute inset-0 opacity-20"
@@ -86,7 +86,7 @@ export const BusinessMapView: React.FC<BusinessMapViewProps> = ({
       </div>
 
       {/* Selected Business Side Panel */}
-      <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-slate-200 bg-slate-50 p-6 flex flex-col justify-between overflow-y-auto">
+      <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-slate-200 bg-slate-50 p-4 sm:p-6 flex flex-col justify-between overflow-y-auto">
         {selectedBiz ? (
           <div>
             <div className="flex items-center justify-between gap-2 mb-3">

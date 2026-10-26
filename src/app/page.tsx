@@ -51,7 +51,20 @@ export default function HomePage() {
   const [currentTab, setCurrentTab] = useState<NavigationTab>('discovery');
   const [viewMode, setViewMode] = useState<'table' | 'cards' | 'map'>('table');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currency, setCurrency] = useState<'USD' | 'INR'>('INR');
+
+  // Auto-collapse sidebar on tablet / small desktop screens to give maximum room
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setIsSidebarCollapsed(true);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Master State
   const [businesses, setBusinesses] = useState<Business[]>(initialBusinesses);
@@ -276,11 +289,14 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar Navigation */}
+    <div className="min-h-screen bg-slate-50 flex overflow-x-hidden">
+      {/* Responsive Sidebar Navigation (Mobile Drawer + Collapsible Desktop) */}
       <Sidebar
         currentTab={currentTab}
-        onSelectTab={setCurrentTab}
+        onSelectTab={(tab) => {
+          setCurrentTab(tab);
+          setIsMobileMenuOpen(false);
+        }}
         counts={{
           totalBusinesses: businesses.length,
           crmLeads: prospects.length,
@@ -288,12 +304,14 @@ export default function HomePage() {
         }}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        isMobileOpen={isMobileMenuOpen}
+        onCloseMobile={() => setIsMobileMenuOpen(false)}
       />
 
-      {/* Main Workspace */}
+      {/* Main Workspace (pl-0 on mobile, md:pl-20/md:pl-64 on desktop) */}
       <div
-        className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${
-          isSidebarCollapsed ? 'pl-20' : 'pl-64'
+        className={`flex-1 flex flex-col min-h-screen transition-all duration-300 w-full max-w-full min-w-0 pl-0 ${
+          isSidebarCollapsed ? 'md:pl-20' : 'md:pl-64'
         }`}
       >
         {/* Top Header */}
@@ -313,17 +331,18 @@ export default function HomePage() {
           }
           onOpenProviderModal={() => setIsProviderModalOpen(true)}
           isCollapsed={isSidebarCollapsed}
+          onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)}
         />
 
         {/* Page Content Container */}
-        <main className="flex-1 p-6 pt-22 space-y-6 max-w-[1720px] w-full mx-auto">
+        <main className="flex-1 p-3.5 sm:p-5 md:p-6 pt-20 md:pt-22 space-y-4 sm:space-y-6 max-w-[1720px] w-full mx-auto min-w-0 overflow-x-hidden">
           {/* TAB 1: Global Discovery Engine */}
           {currentTab === 'discovery' && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6 min-w-0">
               {/* Page Header & View Switchers */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="min-w-0">
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                     Global Business Intelligence &amp; Opportunity Finder
                   </h1>
                   <p className="text-xs text-slate-500 mt-1">
@@ -332,10 +351,10 @@ export default function HomePage() {
                 </div>
 
                 {/* View Mode Buttons (Table / Cards / Map) */}
-                <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-white shadow-2xs">
+                <div className="grid grid-cols-3 sm:inline-flex rounded-lg border border-slate-200 p-0.5 bg-white shadow-2xs shrink-0 w-full sm:w-auto">
                   <button
                     onClick={() => setViewMode('table')}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                    className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-md text-xs font-semibold transition-colors min-h-[38px] sm:min-h-0 ${
                       viewMode === 'table' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -344,7 +363,7 @@ export default function HomePage() {
                   </button>
                   <button
                     onClick={() => setViewMode('cards')}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                    className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-md text-xs font-semibold transition-colors min-h-[38px] sm:min-h-0 ${
                       viewMode === 'cards' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -353,7 +372,7 @@ export default function HomePage() {
                   </button>
                   <button
                     onClick={() => setViewMode('map')}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                    className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-md text-xs font-semibold transition-colors min-h-[38px] sm:min-h-0 ${
                       viewMode === 'map' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >

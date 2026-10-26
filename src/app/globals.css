@@ -36,7 +36,16 @@
   }
 }
 
+html {
+  overflow-x: hidden;
+  max-width: 100%;
+  width: 100%;
+}
+
 body {
+  overflow-x: hidden;
+  max-width: 100%;
+  width: 100%;
   background-color: #f8fafc;
   color: #0f172a;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -67,4 +76,15 @@ body {
 .table-container {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  max-width: 100%;
 }
+
+/* Utility to hide scrollbars for horizontally scrollable filter presets on mobile */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+

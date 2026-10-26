@@ -16,6 +16,8 @@ import {
   Search,
   HelpCircle,
   ArrowRight,
+  MapPin,
+  Send,
 } from 'lucide-react';
 
 interface BusinessTableProps {
@@ -71,7 +73,7 @@ export const BusinessTable: React.FC<BusinessTableProps> = ({
     const suggestedCategories = query ? BusinessSearchEngine.findMatchingCategories(query) : [];
 
     return (
-      <div className="bg-white rounded-xl border border-slate-200 p-10 text-center shadow-xs">
+      <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-10 text-center shadow-xs">
         <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
           <Building className="w-6 h-6 text-slate-400" />
         </div>
@@ -107,11 +109,12 @@ export const BusinessTable: React.FC<BusinessTableProps> = ({
         )}
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-center gap-3 mt-6">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 mt-6">
           {onSwitchToOrLogic && currentFilter?.filterLogic === 'AND' && (
             <Button
               variant="secondary"
               size="sm"
+              className="w-full sm:w-auto min-h-[40px] sm:min-h-0"
               leftIcon={<SlidersHorizontal className="w-3.5 h-3.5" />}
               onClick={onSwitchToOrLogic}
             >
@@ -123,6 +126,7 @@ export const BusinessTable: React.FC<BusinessTableProps> = ({
             <Button
               variant="outline"
               size="sm"
+              className="w-full sm:w-auto min-h-[40px] sm:min-h-0"
               leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
               onClick={onResetFilters}
             >
@@ -135,10 +139,12 @@ export const BusinessTable: React.FC<BusinessTableProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
-      {/* Batch Actions Bar (when rows are selected) */}
+    <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden min-w-0">
+      {/* ─────────────────────────────────────────────────────────────
+          BATCH ACTIONS BAR (when rows are selected)
+          ───────────────────────────────────────────────────────────── */}
       {selectedIds.size > 0 && (
-        <div className="bg-blue-50 border-b border-blue-100 px-4 py-2.5 flex items-center justify-between text-xs animate-in fade-in">
+        <div className="bg-blue-50 border-b border-blue-100 px-3.5 sm:px-4 py-2.5 flex items-center justify-between text-xs animate-in fade-in flex-wrap gap-2">
           <span className="font-semibold text-blue-900">
             {selectedIds.size} {selectedIds.size === 1 ? 'business' : 'businesses'} selected
           </span>
@@ -146,6 +152,7 @@ export const BusinessTable: React.FC<BusinessTableProps> = ({
             <Button
               variant="primary"
               size="sm"
+              className="min-h-[38px] sm:min-h-0"
               leftIcon={<Plus className="w-3.5 h-3.5" />}
               onClick={() => {
                 const toAdd = businesses.filter((b) => selectedIds.has(b.id));
@@ -153,17 +160,192 @@ export const BusinessTable: React.FC<BusinessTableProps> = ({
                 setSelectedIds(new Set());
               }}
             >
-              Add Selected to CRM ({selectedIds.size})
+              Add to CRM ({selectedIds.size})
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
-              Clear Selection
+            <Button
+              variant="ghost"
+              size="sm"
+              className="min-h-[38px] sm:min-h-0"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Clear
             </Button>
           </div>
         </div>
       )}
 
-      {/* Table Container */}
-      <div className="table-container">
+      {/* ─────────────────────────────────────────────────────────────
+          1. MOBILE RESPONSIVE CARD-BASED LIST (< 768px)
+          ───────────────────────────────────────────────────────────── */}
+      <div className="block md:hidden">
+        {/* Mobile Header: Select All toggle */}
+        <div className="p-3 bg-slate-50/90 border-b border-slate-200 flex items-center justify-between text-xs text-slate-600">
+          <label className="flex items-center gap-2 font-medium cursor-pointer min-h-[36px]">
+            <input
+              type="checkbox"
+              checked={businesses.length > 0 && selectedIds.size === businesses.length}
+              onChange={toggleSelectAll}
+              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+            />
+            <span>Select All ({businesses.length})</span>
+          </label>
+          <span className="text-[11px] text-slate-400">
+            {selectedIds.size} selected
+          </span>
+        </div>
+
+        {/* Business Cards */}
+        <div className="divide-y divide-slate-100">
+          {businesses.map((biz) => {
+            const isSelected = selectedIds.has(biz.id);
+            const inCrm = crmBusinessIds.has(biz.id);
+            const isHighPriority = biz.score.priority === 'A';
+            const topOpportunity = biz.opportunities[0];
+
+            return (
+              <div
+                key={biz.id}
+                className={`p-4 transition-colors space-y-3 ${
+                  isSelected ? 'bg-blue-50/40' : 'bg-white hover:bg-slate-50/60'
+                }`}
+              >
+                {/* Row 1: Checkbox + Name + Priority & Score */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <div className="pt-0.5">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelectOne(biz.id)}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer min-h-[24px] min-w-[24px]"
+                        aria-label={`Select ${biz.name}`}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <div
+                        className="font-bold text-slate-900 text-sm leading-tight hover:text-blue-600 cursor-pointer flex items-center gap-1.5 flex-wrap"
+                        onClick={() => onOpenAIReport(biz)}
+                      >
+                        <span className="break-words">{biz.name}</span>
+                        {isHighPriority && (
+                          <span
+                            className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"
+                            title="Priority A target"
+                          />
+                        )}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                        <span className="font-medium text-slate-700">{biz.category}</span>
+                        <span className="text-slate-300">•</span>
+                        <span className="flex items-center gap-0.5 text-slate-500">
+                          <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span>{biz.location.city}, {biz.location.countryCode}</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end shrink-0">
+                    <Badge variant="priority" priority={biz.score.priority} />
+                    <span className="text-[11px] font-bold text-slate-700 mt-1">
+                      {biz.score.totalScore}/100
+                    </span>
+                  </div>
+                </div>
+
+                {/* Row 2: Website, Phone, Rating */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 text-xs">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="website" websiteStatus={biz.websiteStatus} />
+                    {biz.phone ? (
+                      <span className="flex items-center gap-1 font-mono text-[11px] text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-200/60">
+                        <Phone className="w-3 h-3 text-emerald-600 shrink-0" />
+                        <span className="truncate max-w-[130px]">{biz.phone}</span>
+                      </span>
+                    ) : (
+                      <Badge variant="phone" phoneStatus={biz.phoneStatus} />
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 font-semibold text-slate-800 text-xs shrink-0">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                    <span>{biz.rating ? biz.rating.toFixed(1) : '4.5'}</span>
+                    <span className="text-slate-400 font-normal">({biz.reviewCount})</span>
+                  </div>
+                </div>
+
+                {/* Row 3: Top Detected Gap */}
+                {topOpportunity && (
+                  <div className="p-2.5 rounded-lg bg-amber-50/70 border border-amber-200/70 text-xs">
+                    <span className="font-semibold text-amber-900 block truncate">
+                      {topOpportunity.title}
+                    </span>
+                    <p className="text-[11px] text-amber-800/90 line-clamp-1 mt-0.5">
+                      {topOpportunity.evidence}
+                    </p>
+                  </div>
+                )}
+
+                {/* Row 4: Action Buttons (Large Touch Targets) */}
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                  <div className="flex items-center gap-1.5 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => onOpenAIReport(biz)}
+                      className="px-2.5 py-2 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors text-xs font-semibold flex items-center justify-center gap-1.5 min-h-[40px] flex-1"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                      <span>AI Report</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onOpenAudit(biz)}
+                      className="p-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center shrink-0"
+                      title="View Full Audit"
+                      aria-label="View Full Audit"
+                    >
+                      <Activity className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onOpenSalesOutreach(biz)}
+                      className="p-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center shrink-0"
+                      title="Sales Outreach Pitch"
+                      aria-label="Sales Outreach Pitch"
+                    >
+                      <Send className="w-4 h-4 text-slate-600" />
+                    </button>
+                  </div>
+
+                  <div className="shrink-0">
+                    {inCrm ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 min-h-[40px]">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        In CRM
+                      </span>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="min-h-[40px]"
+                        leftIcon={<Plus className="w-3.5 h-3.5" />}
+                        onClick={() => onAddToCRM(biz)}
+                      >
+                        Add CRM
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          2. DESKTOP ENTERPRISE DATA TABLE (>= 768px)
+          ───────────────────────────────────────────────────────────── */}
+      <div className="hidden md:block table-container">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500 select-none">
@@ -216,13 +398,20 @@ export const BusinessTable: React.FC<BusinessTableProps> = ({
                     >
                       <span>{biz.name}</span>
                       {isHighPriority && (
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Priority A target" />
+                        <span
+                          className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"
+                          title="Priority A target"
+                        />
                       )}
                     </div>
                     <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
-                      <span className="font-medium text-slate-600 truncate max-w-[200px]">{biz.category}</span>
+                      <span className="font-medium text-slate-600 truncate max-w-[200px]">
+                        {biz.category}
+                      </span>
                       <span className="text-slate-300">•</span>
-                      <span className="text-slate-400 capitalize">{biz.sourceProvider.replace(/_/g, ' ')}</span>
+                      <span className="text-slate-400 capitalize">
+                        {biz.sourceProvider.replace(/_/g, ' ')}
+                      </span>
                     </div>
                   </td>
 
@@ -231,7 +420,10 @@ export const BusinessTable: React.FC<BusinessTableProps> = ({
                     <div className="font-medium text-slate-800">
                       {biz.location.city}, {biz.location.countryCode}
                     </div>
-                    <div className="text-[11px] text-slate-400 truncate max-w-[180px]" title={biz.formattedAddress}>
+                    <div
+                      className="text-[11px] text-slate-400 truncate max-w-[180px]"
+                      title={biz.formattedAddress}
+                    >
                       {biz.location.neighborhood || biz.formattedAddress}
                     </div>
                   </td>
