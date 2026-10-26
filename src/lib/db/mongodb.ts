@@ -1,32 +1,34 @@
 import { MongoClient, Db } from 'mongodb';
 
-const uri = process.env.MONGODB_URI;
-const dbName = process.env.MONGODB_DB || 'adgrow_bd';
-
 declare global {
   // eslint-disable-next-line no-var
   var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
 function createClientPromise(): Promise<MongoClient> {
+  const uri = process.env.MONGODB_URI;
   if (!uri) {
     throw new Error('Missing MONGODB_URI environment variable. Set it in .env.');
   }
   return new MongoClient(uri).connect();
 }
 
-// Reuse the connection across hot reloads in dev so each file-save doesn't open a new pool.
-let clientPromise: Promise<MongoClient>;
-if (process.env.NODE_ENV === 'development') {
-  if (!global._mongoClientPromise) {
-    global._mongoClientPromise = createClientPromise();
+// Connection is created lazily, only when getDb() is first called by an actual request —
+// never at module-import time. Next.js's build step imports every API route module to
+// statically analyze it, so any top-level connection attempt here would run during `next
+// build` itself and crash the build if MONGODB_URI isn't visible at build time.
+function getClientPromise(): Promise<MongoClient> {
+  if (process.env.NODE_ENV === 'development') {
+    if (!global._mongoClientPromise) {
+      global._mongoClientPromise = createClientPromise();
+    }
+    return global._mongoClientPromise;
   }
-  clientPromise = global._mongoClientPromise;
-} else {
-  clientPromise = createClientPromise();
+  return createClientPromise();
 }
 
 export async function getDb(): Promise<Db> {
-  const client = await clientPromise;
+  const dbName = process.env.MONGODB_DB || 'adgrow_bd';
+  const client = await getClientPromise();
   return client.db(dbName);
 }
