@@ -7,16 +7,13 @@ import {
   CRMProspect,
   PipelineStage,
 } from '@/types';
-import { initialBusinesses } from '@/lib/data/seed-businesses';
-import { BusinessSearchEngine, SearchDiagnostics } from '@/lib/services/search-engine';
 import {
-  getStoredProspects,
-  saveProspects,
+  fetchProspects,
   addBusinessToCRM,
   updateProspectStage,
   addProspectNote,
   toggleProspectTask,
-} from '@/lib/store/crm-store';
+} from '@/lib/api/crm-client';
 import { Sidebar, NavigationTab } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { FilterBar } from '@/components/discovery/FilterBar';
@@ -67,11 +64,10 @@ export default function HomePage() {
   }, []);
 
   // Master State
-  const [businesses, setBusinesses] = useState<Business[]>(initialBusinesses);
-  const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>(initialBusinesses);
-  const [searchDiagnostics, setSearchDiagnostics] = useState<SearchDiagnostics | null>(null);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([]);
+  const [searchMeta, setSearchMeta] = useState<{ totalCount: number; latencyMs: number } | null>(null);
   const [prospects, setProspects] = useState<CRMProspect[]>([]);
-  const [activeProvider, setActiveProvider] = useState<string>('local_verified_registry');
   const [isLoadingSearch, setIsLoadingSearch] = useState(false);
   const [providerError, setProviderError] = useState<string | null>(null);
 
@@ -101,108 +97,93 @@ export default function HomePage() {
   const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
   const [isNewBizModalOpen, setIsNewBizModalOpen] = useState(false);
 
-  // Load CRM prospects from localStorage on client mount
+  // Load CRM prospects from MongoDB on client mount (server seeds demo data on first run)
   useEffect(() => {
-    const stored = getStoredProspects();
-    if (stored && stored.length > 0) {
-      setProspects(stored);
-    } else {
-      // Seed initial high-intent prospects into CRM for demonstration
-      const initialSeedProspects = initialBusinesses.slice(0, 3).map((b, idx) => {
-        const stage: PipelineStage = idx === 0 ? 'qualified' : idx === 1 ? 'ready_for_outreach' : 'contacted';
-        return addBusinessToCRM(b, stage, 'website_development', 1800, 'USD');
-      });
-      setProspects(initialSeedProspects);
-    }
+    fetchProspects()
+      .then(setProspects)
+      .catch((err) => console.error('Failed to load CRM prospects', err));
   }, []);
 
-  // Execute Search Engine with debouncing and multi-provider support
+  // Search: always read saved MongoDB businesses (no key needed), and merge in
+  // live Google Places results too whenever an API key is configured.
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (activeProvider === 'google_places') {
-        setIsLoadingSearch(true);
-        setProviderError(null);
-        try {
-          const storedKey = typeof window !== 'undefined' ? localStorage.getItem('adgrow_google_api_key') || '' : '';
-          const res = await fetch('/api/search', {
+      setIsLoadingSearch(true);
+      setProviderError(null);
+
+      const filterBody = { ...filter, query: filter.searchQuery };
+
+      const savedPromise = fetch('/api/businesses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(filterBody),
+      })
+        .then((res) => res.json())
+        .then((data) => (data.success ? (data.businesses as Business[]) : []))
+        .catch(() => []);
+
+      const storedKey = typeof window !== 'undefined' ? localStorage.getItem('adgrow_google_api_key') || '' : '';
+      const livePromise = storedKey
+        ? fetch('/api/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ...filter,
-              query: filter.searchQuery,
-              provider: 'google_places',
-              googleApiKey: storedKey,
-            }),
-          });
-          const data = await res.json();
-          if (res.ok && data.success) {
-            setFilteredBusinesses(data.businesses || []);
-            setSearchDiagnostics({
-              originalQuery: filter.searchQuery,
-              matchedCategoryIds: [],
-              matchedSynonyms: [],
-              totalRecordsScanned: data.totalCount,
-              totalMatchesFound: (data.businesses || []).length,
-              providerUsed: 'Google Maps Platform (Places API New)',
-              executionTimeMs: data.latencyMs || 200,
-              suggestedBroaderTerms: [],
-            });
-          } else {
-            setProviderError(data.message || 'Google Places API query failed.');
-            // Seamless fallback to unified local registry with full synonym resolution
-            const { results, diagnostics } = BusinessSearchEngine.executeSearch(
-              businesses,
-              filter,
-              filter.country !== 'all' ? filter.country : undefined
-            );
-            setFilteredBusinesses(results);
-            setSearchDiagnostics({
-              ...diagnostics,
-              providerUsed: `Ad Grow BD Verified Registry (Fallback: ${data.error || 'API Key Required'})`,
-            });
-          }
-        } catch (err: any) {
-          setProviderError(err.message);
-          const { results, diagnostics } = BusinessSearchEngine.executeSearch(
-            businesses,
-            filter,
-            filter.country !== 'all' ? filter.country : undefined
-          );
-          setFilteredBusinesses(results);
-          setSearchDiagnostics(diagnostics);
-        } finally {
-          setIsLoadingSearch(false);
-        }
-      } else {
-        // Execute Unified Search Engine with full synonym resolution
-        setProviderError(null);
-        const { results, diagnostics } = BusinessSearchEngine.executeSearch(
-          businesses,
-          filter,
-          filter.country !== 'all' ? filter.country : undefined
-        );
-        setFilteredBusinesses(results);
-        setSearchDiagnostics(diagnostics);
+            body: JSON.stringify({ ...filterBody, googleApiKey: storedKey }),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (!data.success) {
+                setProviderError(data.message || 'Google Places API query failed.');
+                return [];
+              }
+              return data.businesses as Business[];
+            })
+            .catch((err) => {
+              setProviderError(err.message || 'Failed to reach the live search API.');
+              return [];
+            })
+        : Promise.resolve([] as Business[]);
+
+      const [saved, live] = await Promise.all([savedPromise, livePromise]);
+
+      const combined = [...saved];
+      const existingIds = new Set(saved.map((b) => b.id));
+      for (const b of live) {
+        if (!existingIds.has(b.id)) combined.push(b);
       }
+
+      setFilteredBusinesses(combined);
+      setSearchMeta({ totalCount: combined.length, latencyMs: 0 });
+      setBusinesses((prev) => {
+        const prevIds = new Set(prev.map((b) => b.id));
+        const newOnes = combined.filter((b) => !prevIds.has(b.id));
+        return newOnes.length > 0 ? [...prev, ...newOnes] : prev;
+      });
+      setIsLoadingSearch(false);
     }, 150);
 
     return () => clearTimeout(timer);
-  }, [filter, businesses, activeProvider]);
+  }, [filter]);
 
   // Derived set of CRM business IDs
   const crmBusinessIds = useMemo(() => new Set(prospects.map((p) => p.businessId)), [prospects]);
 
   // CRM Handlers
-  const handleAddToCRM = (business: Business) => {
-    const newProspect = addBusinessToCRM(business, 'qualified', 'website_development', 1800, 'USD');
-    setProspects((prev) => [newProspect, ...prev.filter((p) => p.id !== newProspect.id)]);
+  const handleAddToCRM = async (business: Business) => {
+    try {
+      const newProspect = await addBusinessToCRM(business, 'qualified', 'website_development', 1800, 'USD');
+      setProspects((prev) => [newProspect, ...prev.filter((p) => p.id !== newProspect.id)]);
+    } catch (err) {
+      console.error('Failed to add business to CRM', err);
+    }
   };
 
-  const handleUpdateStage = (prospectId: string, stage: PipelineStage) => {
-    const updated = updateProspectStage(prospectId, stage);
-    setProspects(updated);
-    if (selectedCRMProspect?.id === prospectId) {
-      setSelectedCRMProspect((prev) => (prev ? { ...prev, stage } : null));
+  const handleUpdateStage = async (prospectId: string, stage: PipelineStage) => {
+    try {
+      const updated = await updateProspectStage(prospectId, stage);
+      setProspects((prev) => prev.map((p) => (p.id === prospectId ? updated : p)));
+      setSelectedCRMProspect((prev) => (prev?.id === prospectId ? updated : prev));
+    } catch (err) {
+      console.error('Failed to update prospect stage', err);
     }
   };
 
@@ -229,14 +210,24 @@ export default function HomePage() {
     }
   };
 
-  const handleAddNote = (prospectId: string, note: string) => {
-    const updated = addProspectNote(prospectId, note);
-    setProspects(updated);
+  const handleAddNote = async (prospectId: string, note: string) => {
+    try {
+      const updated = await addProspectNote(prospectId, note);
+      setProspects((prev) => prev.map((p) => (p.id === prospectId ? updated : p)));
+      setSelectedCRMProspect((prev) => (prev?.id === prospectId ? updated : prev));
+    } catch (err) {
+      console.error('Failed to add note', err);
+    }
   };
 
-  const handleToggleTask = (prospectId: string, taskId: string) => {
-    const updated = toggleProspectTask(prospectId, taskId);
-    setProspects(updated);
+  const handleToggleTask = async (prospectId: string, taskId: string) => {
+    try {
+      const updated = await toggleProspectTask(prospectId, taskId);
+      setProspects((prev) => prev.map((p) => (p.id === prospectId ? updated : p)));
+      setSelectedCRMProspect((prev) => (prev?.id === prospectId ? updated : prev));
+    } catch (err) {
+      console.error('Failed to toggle task', err);
+    }
   };
 
   // CSV Export
@@ -322,13 +313,7 @@ export default function HomePage() {
           onCurrencyToggle={() => setCurrency((c) => (c === 'USD' ? 'INR' : 'USD'))}
           onExportCSV={handleExportCSV}
           onOpenNewBusinessModal={() => setIsNewBizModalOpen(true)}
-          providerName={
-            activeProvider === 'local_verified_registry'
-              ? 'Verified Registry (Synonyms On)'
-              : activeProvider === 'google_places'
-              ? 'Google Places API'
-              : 'OpenStreetMap'
-          }
+          providerName="MongoDB + Google Places"
           onOpenProviderModal={() => setIsProviderModalOpen(true)}
           isCollapsed={isSidebarCollapsed}
           onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)}
@@ -390,25 +375,15 @@ export default function HomePage() {
                 totalMatches={filteredBusinesses.length}
               />
 
-              {/* Search Diagnostics & Semantic Telemetry Bar */}
-              {searchDiagnostics && filter.searchQuery && (
+              {/* Live Search Telemetry Bar */}
+              {searchMeta && (
                 <div className="p-3 bg-purple-50/70 border border-purple-200/80 rounded-xl flex items-center justify-between text-xs flex-wrap gap-2 text-purple-900">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
-                    <span>
-                      Query <strong>&quot;{searchDiagnostics.originalQuery}&quot;</strong> mapped to{' '}
-                      <strong>{searchDiagnostics.matchedCategoryIds.length}</strong> categories via synonym engine:{' '}
-                      <span className="italic text-purple-700">
-                        {searchDiagnostics.suggestedBroaderTerms.join(', ') || 'Direct text match'}
-                      </span>
-                    </span>
+                    <span>Saved leads from MongoDB{typeof window !== 'undefined' && localStorage.getItem('adgrow_google_api_key') ? ' + live Google Places results' : ''}</span>
                   </div>
                   <div className="flex items-center gap-3 text-[11px] text-purple-600 font-mono">
-                    <span>Scanned: {searchDiagnostics.totalRecordsScanned}</span>
-                    <span>•</span>
-                    <span>Matched: {searchDiagnostics.totalMatchesFound}</span>
-                    <span>•</span>
-                    <span>Latency: {searchDiagnostics.executionTimeMs}ms</span>
+                    <span>Matched: {searchMeta.totalCount}</span>
                   </div>
                 </div>
               )}
@@ -418,7 +393,7 @@ export default function HomePage() {
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-900">
                   <div className="flex items-center gap-2">
                     <Info className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>{providerError}</span>
+                    <span>{providerError} (saved MongoDB leads are unaffected)</span>
                   </div>
                   <button
                     onClick={() => setIsProviderModalOpen(true)}
@@ -436,9 +411,7 @@ export default function HomePage() {
                   {filter.websiteStatus === 'no_website' && ' (Filtered by: No Website Listed)'}
                   {filter.priorityTier !== 'all' && ` (Priority ${filter.priorityTier})`}
                 </span>
-                <span className="text-[11px] text-slate-400">
-                  Data Provider: {activeProvider === 'local_verified_registry' ? 'Verified Curated DB' : activeProvider}
-                </span>
+                <span className="text-[11px] text-slate-400">Data Providers: MongoDB + Google Places API</span>
               </div>
 
               {/* View Components */}
@@ -695,11 +668,6 @@ export default function HomePage() {
       <ProviderConfigModal
         isOpen={isProviderModalOpen}
         onClose={() => setIsProviderModalOpen(false)}
-        activeProvider={activeProvider}
-        onSelectProvider={(pId) => {
-          setActiveProvider(pId);
-          setIsProviderModalOpen(false);
-        }}
       />
 
       {/* 6. Manual Business Indexing Modal */}
@@ -708,6 +676,7 @@ export default function HomePage() {
         onClose={() => setIsNewBizModalOpen(false)}
         onAddBusiness={(newBiz, addToCrmDirectly) => {
           setBusinesses((prev) => [newBiz, ...prev]);
+          setFilteredBusinesses((prev) => [newBiz, ...prev]);
           if (addToCrmDirectly) {
             handleAddToCRM(newBiz);
           }

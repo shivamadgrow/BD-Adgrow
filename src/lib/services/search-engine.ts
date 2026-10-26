@@ -1,4 +1,4 @@
-import { Business, FilterState, BusinessCategory } from '@/types';
+import { BusinessCategory } from '@/types';
 import { businessCategories } from '../data/categories';
 
 export interface SearchSuggestion {
@@ -7,17 +7,6 @@ export interface SearchSuggestion {
   label: string;
   subLabel?: string;
   categoryId?: string;
-}
-
-export interface SearchDiagnostics {
-  originalQuery: string;
-  matchedCategoryIds: string[];
-  matchedSynonyms: string[];
-  totalRecordsScanned: number;
-  totalMatchesFound: number;
-  providerUsed: string;
-  executionTimeMs: number;
-  suggestedBroaderTerms: string[];
 }
 
 export class BusinessSearchEngine {
@@ -98,146 +87,5 @@ export class BusinessSearchEngine {
     }
 
     return suggestions;
-  }
-
-  /**
-   * Execute comprehensive multi-filter search with synonym expansion
-   */
-  public static executeSearch(
-    dataset: Business[],
-    filter: FilterState,
-    countryCode?: string
-  ): { results: Business[]; diagnostics: SearchDiagnostics } {
-    const startTime = performance.now();
-    const query = filter.searchQuery.trim().toLowerCase();
-
-    // 1. Identify matching category IDs via synonyms
-    const matchingCategories = query ? this.findMatchingCategories(query, countryCode) : [];
-    const matchedCategoryIds = new Set(matchingCategories.map((c) => c.id));
-    const matchedSynonyms = matchingCategories.flatMap((c) => c.synonyms || []).slice(0, 10);
-
-    let results = [...dataset];
-
-    if (filter.filterLogic === 'AND') {
-      // Country
-      if (filter.country && filter.country !== 'all') {
-        results = results.filter((b) => b.location.countryCode.toLowerCase() === filter.country.toLowerCase());
-      }
-      // City
-      if (filter.city && filter.city !== 'all') {
-        results = results.filter((b) => b.location.city.toLowerCase().includes(filter.city.toLowerCase()));
-      }
-      // Explicit Category Filter
-      if (filter.categoryId && filter.categoryId !== 'all') {
-        results = results.filter((b) => b.categoryId === filter.categoryId);
-      }
-      // Query search (Name, Category, Address, OR Category Synonym Match)
-      if (query !== '') {
-        results = results.filter((b) => {
-          // Direct text match on business name, category, or address
-          const matchesText =
-            b.name.toLowerCase().includes(query) ||
-            b.category.toLowerCase().includes(query) ||
-            b.industryGroup.toLowerCase().includes(query) ||
-            b.formattedAddress.toLowerCase().includes(query);
-
-          if (matchesText) return true;
-
-          // Synonym / Semantic category match:
-          // e.g., if user searches "pharma", and this business has categoryId 'cat-pharma-retail' or 'cat-pharma-mfg'
-          if (matchedCategoryIds.has(b.categoryId)) return true;
-
-          return false;
-        });
-      }
-
-      // Website Status
-      if (filter.websiteStatus && filter.websiteStatus !== 'all') {
-        if (filter.websiteStatus === 'no_website') {
-          results = results.filter((b) => b.websiteStatus === 'not_listed' || b.websiteStatus === 'not_found');
-        } else if (filter.websiteStatus === 'has_website') {
-          results = results.filter((b) => b.websiteStatus === 'verified_present');
-        } else {
-          results = results.filter((b) => b.websiteStatus === filter.websiteStatus);
-        }
-      }
-
-      // Phone Status
-      if (filter.phoneStatus && filter.phoneStatus !== 'all') {
-        if (filter.phoneStatus === 'available') {
-          results = results.filter((b) => b.phoneStatus === 'available' && b.phone);
-        } else if (filter.phoneStatus === 'missing') {
-          results = results.filter((b) => b.phoneStatus === 'not_listed');
-        }
-      }
-
-      // Rating & Reviews
-      if (filter.minRating > 0) {
-        results = results.filter((b) => (b.rating || 0) >= filter.minRating);
-      }
-      if (filter.minReviews > 0) {
-        results = results.filter((b) => (b.reviewCount || 0) >= filter.minReviews);
-      }
-      if (filter.minScore > 0) {
-        results = results.filter((b) => b.score.totalScore >= filter.minScore);
-      }
-      if (filter.priorityTier && filter.priorityTier !== 'all') {
-        results = results.filter((b) => b.score.priority === filter.priorityTier);
-      }
-    } else {
-      // OR logic
-      results = results.filter((b) => {
-        const matchesCountry = filter.country && filter.country !== 'all' ? b.location.countryCode.toLowerCase() === filter.country.toLowerCase() : false;
-        const matchesCity = filter.city && filter.city !== 'all' ? b.location.city.toLowerCase().includes(filter.city.toLowerCase()) : false;
-        const matchesCategory = filter.categoryId && filter.categoryId !== 'all' ? b.categoryId === filter.categoryId : false;
-        const matchesQuery = query !== '' ? (
-          b.name.toLowerCase().includes(query) ||
-          b.category.toLowerCase().includes(query) ||
-          matchedCategoryIds.has(b.categoryId)
-        ) : false;
-        const matchesNoWebsite = filter.websiteStatus === 'no_website' ? (b.websiteStatus === 'not_listed' || b.websiteStatus === 'not_found') : false;
-        const matchesPhone = filter.phoneStatus === 'available' ? (b.phoneStatus === 'available' && !!b.phone) : false;
-        const matchesPriority = filter.priorityTier && filter.priorityTier !== 'all' ? b.score.priority === filter.priorityTier : false;
-
-        return matchesCountry || matchesCity || matchesCategory || matchesQuery || matchesNoWebsite || matchesPhone || matchesPriority;
-      });
-    }
-
-    // Sort results
-    results.sort((a, b) => {
-      let comparison = 0;
-      switch (filter.sortBy) {
-        case 'score':
-          comparison = b.score.totalScore - a.score.totalScore;
-          break;
-        case 'rating':
-          comparison = (b.rating || 0) - (a.rating || 0);
-          break;
-        case 'reviews':
-          comparison = (b.reviewCount || 0) - (a.reviewCount || 0);
-          break;
-        case 'name':
-          comparison = a.name.localeCompare(b.name);
-          break;
-        default:
-          comparison = b.score.totalScore - a.score.totalScore;
-      }
-      return filter.sortOrder === 'desc' ? comparison : -comparison;
-    });
-
-    const executionTimeMs = Math.round(performance.now() - startTime);
-
-    const diagnostics: SearchDiagnostics = {
-      originalQuery: filter.searchQuery,
-      matchedCategoryIds: Array.from(matchedCategoryIds),
-      matchedSynonyms,
-      totalRecordsScanned: dataset.length,
-      totalMatchesFound: results.length,
-      providerUsed: 'Unified Search Engine (Local + Synonym Resolver)',
-      executionTimeMs,
-      suggestedBroaderTerms: matchingCategories.slice(0, 4).map((c) => c.name),
-    };
-
-    return { results, diagnostics };
   }
 }
